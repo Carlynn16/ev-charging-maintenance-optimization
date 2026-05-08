@@ -102,6 +102,7 @@ def plot_scatter_with_smoother(
     y: pd.Series,
     ax: Optional[plt.Axes] = None,
     log_x: bool = False,
+    ylim: Optional[tuple] = None,
     title: str = "",
     xlabel: str = "",
     ylabel: str = "",
@@ -117,6 +118,10 @@ def plot_scatter_with_smoother(
     the x-axis is relabelled in original units — use this for utilization, which
     spans nearly three orders of magnitude.
 
+    When `ylim` is set, the visible y-range is cropped to that window *after*
+    the LOWESS is computed on all data. This prevents a handful of outliers from
+    compressing the main data mass without biasing the smoother.
+
     Parameters
     ----------
     x, y : pd.Series
@@ -125,6 +130,9 @@ def plot_scatter_with_smoother(
         Target axes. A new figure is created if not supplied.
     log_x : bool
         If True, plot x on a log10 scale with original-unit tick labels.
+    ylim : tuple (ymin, ymax), optional
+        Crop the visible y-axis to this range. LOWESS is computed on all data
+        regardless of this setting.
     title : str
         Axes title.
     xlabel, ylabel : str
@@ -145,6 +153,7 @@ def plot_scatter_with_smoother(
         xv_plot = np.log10(np.clip(xv, 1e-9, None))
         ax.scatter(xv_plot, yv, alpha=0.3, color=_PALETTE["secondary"],
                    s=12, linewidths=0)
+        # LOWESS computed on all data before any ylim crop.
         smoothed = _sm_lowess(yv, xv_plot, frac=0.3, return_sorted=True)
         ax.plot(smoothed[:, 0], smoothed[:, 1],
                 color=_PALETTE["accent"], linewidth=2.5, label="LOWESS")
@@ -159,9 +168,13 @@ def plot_scatter_with_smoother(
     else:
         ax.scatter(xv, yv, alpha=0.3, color=_PALETTE["secondary"],
                    s=12, linewidths=0)
+        # LOWESS computed on all data before any ylim crop.
         smoothed = _sm_lowess(yv, xv, frac=0.3, return_sorted=True)
         ax.plot(smoothed[:, 0], smoothed[:, 1],
                 color=_PALETTE["accent"], linewidth=2.5, label="LOWESS")
+
+    if ylim is not None:
+        ax.set_ylim(ylim)
 
     ax.set_title(title, fontsize=12, fontweight="bold")
     ax.set_xlabel(xlabel or (x.name or ""))
