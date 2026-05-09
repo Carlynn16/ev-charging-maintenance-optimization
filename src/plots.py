@@ -183,6 +183,66 @@ def plot_scatter_with_smoother(
     return ax
 
 
+def plot_tier_means(
+    summary_df: pd.DataFrame,
+    ax: Optional[plt.Axes] = None,
+    value_col: str = "mean",
+    ci_low_col: str = "ci_low",
+    ci_high_col: str = "ci_high",
+    title: str = "Mean incident rate by utilization tier",
+    ylabel: str = "Mean incident rate (incidents / tasks)",
+) -> plt.Axes:
+    """Bar chart of per-tier mean incident rate with 95 % bootstrap CI error bars.
+
+    Parameters
+    ----------
+    summary_df : pd.DataFrame
+        As returned by tier_summary(), indexed by tier label (Low→Medium→High).
+    ax : plt.Axes, optional
+        Target axes. A new figure is created if not supplied.
+    value_col, ci_low_col, ci_high_col : str
+        Column names for the bar heights and confidence-interval bounds.
+    title, ylabel : str
+        Plot labels.
+
+    Returns
+    -------
+    plt.Axes
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    tiers = summary_df.index.tolist()
+    means = summary_df[value_col].values
+    err_low = means - summary_df[ci_low_col].values
+    err_high = summary_df[ci_high_col].values - means
+
+    ax.bar(
+        tiers,
+        means,
+        color=_PALETTE["primary"],
+        alpha=0.85,
+        width=0.5,
+        zorder=2,
+    )
+    ax.errorbar(
+        tiers,
+        means,
+        yerr=[err_low, err_high],
+        fmt="none",
+        color=_PALETTE["secondary"],
+        capsize=5,
+        linewidth=1.5,
+        zorder=3,
+    )
+
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel("Utilization tier")
+    ax.set_ylabel(ylabel)
+    ax.set_ylim(bottom=0)
+    return ax
+
+
 def plot_correlation_heatmap(
     df: pd.DataFrame,
     ax: Optional[plt.Axes] = None,
