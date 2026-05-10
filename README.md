@@ -2,7 +2,7 @@
 
 A statistical analysis of incident rates across 638 EV charging stations to evaluate whether a uniform 2–4 week inspection cycle should be modulated by station utilization or by season.
 
-📄 **[Read the full report (PDF/Word)](reports/EV_charging_maintenance_report.pdf)**
+📄 **[Read the full report (PDF)](EV_charging_maintenance_report.pdf)**
 
 ---
 
@@ -55,11 +55,9 @@ ev-charging-maintenance-optimization/
 │   └── 05b_negbin_robustness.ipynb         # Negative Binomial robustness
 ├── tests/                                  # 76 pytest tests across all modules
 ├── figures/                                # 9 PNG figures used in the report
-├── reports/
-│   └── EV_charging_maintenance_report.docx # Final deliverable (21 pages)
+├── EV_charging_maintenance_report.pdf  # Final deliverable (21 pages)
 └── requirements.txt
 ```
-
 ---
 
 ## Reproducibility
