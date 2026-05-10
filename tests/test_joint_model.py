@@ -19,6 +19,7 @@ from joint_model import (
     dispersion_check,
     extract_rate_ratios,
     fit_gee_poisson,
+    fit_nb_glm,
     fit_under_unknown,
     prepare_model_data,
 )
@@ -137,3 +138,28 @@ def test_fit_under_unknown_smaller_n(raw_panel, model_df):
     result_unknown = fit_under_unknown(raw_panel)
     n_unknown = result_unknown.model.nobs
     assert n_unknown < len(model_df)
+
+
+# ── fit_nb_glm ────────────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def nb_result(model_df):
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return fit_nb_glm(model_df)
+
+
+def test_fit_nb_glm_params_are_finite(nb_result):
+    assert np.isfinite(nb_result.params.values).all()
+
+
+def test_fit_nb_glm_has_alpha_param(nb_result):
+    assert "alpha" in nb_result.params.index
+    assert nb_result.params["alpha"] > 0
+
+
+def test_fit_nb_glm_extract_rate_ratios_excludes_alpha(nb_result):
+    rr = extract_rate_ratios(nb_result)
+    assert "alpha" not in rr["term"].values
+    assert len(rr) == 6  # same as GEE: log_utilization + 5 month dummies

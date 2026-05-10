@@ -179,7 +179,7 @@ def extract_rate_ratios(result) -> pd.DataFrame:
 
     rows = []
     for term in params.index:
-        if term == "Intercept":
+        if term in ("Intercept", "alpha"):  # alpha is NB dispersion param
             continue
         rows.append({
             "term":       _clean_term(term, ref_month),
@@ -192,6 +192,61 @@ def extract_rate_ratios(result) -> pd.DataFrame:
     # Ensure log(utilization) is first, then months chronologically.
     is_util = df["term"] == "log(utilization)"
     return pd.concat([df[is_util], df[~is_util]], ignore_index=True)
+
+
+def fit_nb_glm(
+    model_df: pd.DataFrame,
+    ref_month: str = "2024-01",
+):
+    """Negative Binomial GLM with cluster-robust standard errors.
+
+    Uses statsmodels' MLE-based NegativeBinomial (NB2 parametrisation), which
+    jointly estimates the dispersion parameter alpha alongside the regression
+    coefficients. alpha = 0 collapses to Poisson; a positive alpha models the
+    extra-Poisson variance directly rather than absorbing it post-hoc via
+    sandwich standard errors as GEE does.
+
+    Why smf.negativebinomial instead of sm.GLM(NegativeBinomial)?
+        sm.GLM's NegativeBinomial family requires alpha to be fixed in advance,
+        producing a quasi-NB model. smf.negativebinomial estimates alpha jointly
+        via MLE, giving a proper NB fit and a reported alpha we can inspect.
+
+    Cluster-robust SEs are requested via cov_type='cluster' clustered on
+    charging_location_id. This makes the comparison with GEE Poisson
+    apples-to-apples: both account for within-station repeated observations,
+    one through marginal modelling (GEE) and one through a parametric mixture
+    with robust SEs (NB-cluster).
+
+    Parameters
+    ----------
+    model_df : pd.DataFrame
+        As returned by prepare_model_data().
+    ref_month : str
+        Reference category for the month dummies. Default '2024-01'.
+
+    Returns
+    -------
+    statsmodels NegativeBinomialResults
+        Fitted result with .params (including 'alpha'), .pvalues, .conf_int(),
+        .fittedvalues. Use extract_rate_ratios() to convert to rate ratios;
+        the 'alpha' parameter is automatically excluded there.
+    """
+    import statsmodels.formula.api as smf
+
+    formula = (
+        f'incidents_created ~ log_utilization + '
+        f'C(month_str, Treatment("{ref_month}"))'
+    )
+    model = smf.negativebinomial(
+        formula,
+        data=model_df,
+        offset=np.log(model_df["tasks_solved"]),
+    )
+    return model.fit(
+        disp=False,
+        cov_type="cluster",
+        cov_kwds={"groups": model_df["charging_location_id"]},
+    )
 
 
 def dispersion_check(result) -> dict:
