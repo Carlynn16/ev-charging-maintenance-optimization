@@ -350,6 +350,132 @@ def plot_monthly_rate_comparison(
     return ax
 
 
+def plot_forest(
+    rate_ratios_df: pd.DataFrame,
+    ax: Optional[plt.Axes] = None,
+    title: str = "Rate ratios with 95 % CI (GEE Poisson)",
+    xlabel: str = "Rate ratio (95 % CI)",
+) -> plt.Axes:
+    """Horizontal forest plot of GEE rate ratios.
+
+    Terms are displayed top-to-bottom in the order they appear in the DataFrame
+    (log_utilization first, then months chronologically). The x-axis is on a
+    log scale because rate ratios are multiplicative. A vertical reference line
+    at RR = 1 (no effect) is drawn in light grey. Significant terms (p < 0.05)
+    are plotted in the primary blue; non-significant terms in secondary grey.
+
+    Parameters
+    ----------
+    rate_ratios_df : pd.DataFrame
+        As returned by extract_rate_ratios(). Must have columns:
+        'term', 'rate_ratio', 'ci_low', 'ci_high', 'p_value'.
+    ax : plt.Axes, optional
+        Target axes. A new figure is created if not supplied.
+    title, xlabel : str
+        Plot labels.
+
+    Returns
+    -------
+    plt.Axes
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    df = rate_ratios_df.iloc[::-1].reset_index(drop=True)  # top-to-bottom display
+    y_pos = np.arange(len(df))
+
+    ax.axvline(1.0, color="#CCCCCC", linewidth=1.2, zorder=1)
+
+    for i, row in df.iterrows():
+        color = _PALETTE["primary"] if row["p_value"] < 0.05 else _PALETTE["secondary"]
+        err_low  = row["rate_ratio"] - row["ci_low"]
+        err_high = row["ci_high"] - row["rate_ratio"]
+        ax.errorbar(
+            row["rate_ratio"], i,
+            xerr=[[err_low], [err_high]],
+            fmt="o", color=color, markersize=7,
+            elinewidth=1.5, capsize=4, zorder=3,
+        )
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(df["term"].tolist())
+    ax.set_xscale("log")
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("")
+    # Significance legend
+    from matplotlib.lines import Line2D
+    legend_handles = [
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=_PALETTE["primary"],
+               markersize=8, label="p < 0.05"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=_PALETTE["secondary"],
+               markersize=8, label="p ≥ 0.05"),
+    ]
+    ax.legend(handles=legend_handles, frameon=False, loc="lower right")
+    return ax
+
+
+def plot_forest_comparison(
+    rr_zero: pd.DataFrame,
+    rr_unknown: pd.DataFrame,
+    ax: Optional[plt.Axes] = None,
+    title: str = "Rate ratios: missing_is_zero vs missing_is_unknown",
+    xlabel: str = "Rate ratio (95 % CI)",
+) -> plt.Axes:
+    """Side-by-side forest plot comparing two GEE fits (sensitivity check).
+
+    Plots both sets of rate ratios on the same axes, with the two series
+    slightly offset vertically so CIs do not overlap. Primary blue for
+    missing_is_zero; warm orange for missing_is_unknown.
+
+    Parameters
+    ----------
+    rr_zero, rr_unknown : pd.DataFrame
+        As returned by extract_rate_ratios() for each assumption. Both must
+        have the same terms in the same order.
+    ax : plt.Axes, optional
+        Target axes. A new figure is created if not supplied.
+    title, xlabel : str
+        Plot labels.
+
+    Returns
+    -------
+    plt.Axes
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    n = len(rr_zero)
+    y_base = np.arange(n)
+    offset = 0.18
+
+    ax.axvline(1.0, color="#CCCCCC", linewidth=1.2, zorder=1)
+
+    for df, y_off, color, label in [
+        (rr_zero.iloc[::-1].reset_index(drop=True),    +offset, _PALETTE["primary"], "missing_is_zero"),
+        (rr_unknown.iloc[::-1].reset_index(drop=True), -offset, _PALETTE["accent"],  "missing_is_unknown"),
+    ]:
+        for i, row in df.iterrows():
+            err_low  = row["rate_ratio"] - row["ci_low"]
+            err_high = row["ci_high"] - row["rate_ratio"]
+            ax.errorbar(
+                row["rate_ratio"], y_base[i] + y_off,
+                xerr=[[err_low], [err_high]],
+                fmt="o", color=color, markersize=6,
+                elinewidth=1.4, capsize=3, zorder=3,
+                label=label if i == 0 else None,
+            )
+
+    ax.set_yticks(y_base)
+    ax.set_yticklabels(rr_zero.iloc[::-1]["term"].tolist())
+    ax.set_xscale("log")
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("")
+    ax.legend(frameon=False, loc="lower right")
+    return ax
+
+
 def plot_correlation_heatmap(
     df: pd.DataFrame,
     ax: Optional[plt.Axes] = None,
