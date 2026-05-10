@@ -243,6 +243,54 @@ def plot_tier_means(
     return ax
 
 
+def plot_monthly_rate(
+    summary_df: pd.DataFrame,
+    ax: Optional[plt.Axes] = None,
+    title: str = "Mean incident rate by month",
+    ylabel: str = "Mean incident rate (incidents / tasks)",
+) -> plt.Axes:
+    """Line + marker plot of per-month mean incident rate with 95 % bootstrap CI band.
+
+    Connects months chronologically with a line so the temporal trend (or lack
+    thereof) is immediately visible. The shaded CI band uses the percentile
+    bootstrap intervals from monthly_rate_summary().
+
+    Parameters
+    ----------
+    summary_df : pd.DataFrame
+        As returned by monthly_rate_summary(), with columns 'month',
+        'mean_rate', 'ci_low', 'ci_high'.
+    ax : plt.Axes, optional
+        Target axes. A new figure is created if not supplied.
+    title, ylabel : str
+        Plot labels.
+
+    Returns
+    -------
+    plt.Axes
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    months = summary_df["month"].tolist()
+    means = summary_df["mean_rate"].values
+    ci_low = summary_df["ci_low"].values
+    ci_high = summary_df["ci_high"].values
+
+    ax.plot(months, means, color=_PALETTE["primary"], linewidth=2, marker="o",
+            markersize=7, zorder=3)
+    ax.fill_between(months, ci_low, ci_high,
+                    color=_PALETTE["light"], alpha=0.7,
+                    label="95 % bootstrap CI", zorder=2)
+
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel("Month")
+    ax.set_ylabel(ylabel)
+    ax.set_ylim(bottom=0)
+    ax.legend(frameon=False)
+    return ax
+
+
 def plot_correlation_heatmap(
     df: pd.DataFrame,
     ax: Optional[plt.Axes] = None,
