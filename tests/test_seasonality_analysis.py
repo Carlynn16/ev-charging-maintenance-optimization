@@ -6,6 +6,9 @@ Runs against the real data file at data/session_stats.xlsx.
 """
 import math
 
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
@@ -16,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from data import apply_missing_data_assumption, build_panel, load_raw
+from plots import plot_monthly_rate_comparison
 from seasonality_analysis import dunns_posthoc, kruskal_seasonality, monthly_rate_summary
 
 DATA_PATH = Path(__file__).parent.parent / "data" / "session_stats.xlsx"
@@ -117,3 +121,20 @@ def test_dunns_dataframe_is_6x6_when_returned(panel_zero):
     result = dunns_posthoc(panel_zero)
     if result is not None:
         assert result.shape == (6, 6)
+
+
+# ── plot_monthly_rate_comparison ──────────────────────────────────────────────
+
+def test_plot_monthly_rate_comparison_returns_axes(summary):
+    import numpy as np
+    # Build the trimmed DataFrame the notebook constructs.
+    months = summary["month"].tolist()
+    trimmed = pd.DataFrame({
+        "month": months,
+        "trimmed_mean_p95": summary["mean_rate"].values * 0.7,  # synthetic trim
+    })
+    ax = plot_monthly_rate_comparison(summary.rename(columns={"mean_rate": "untrimmed_mean"}),
+                                      trimmed)
+    assert isinstance(ax, plt.Axes)
+    assert len(ax.lines) >= 2
+    plt.close("all")

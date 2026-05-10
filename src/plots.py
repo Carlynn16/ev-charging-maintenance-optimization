@@ -291,6 +291,65 @@ def plot_monthly_rate(
     return ax
 
 
+def plot_monthly_rate_comparison(
+    untrimmed: pd.DataFrame,
+    trimmed_5pct: pd.DataFrame,
+    ax: Optional[plt.Axes] = None,
+    title: str = "March elevation collapses when the top 5% of rates are trimmed",
+    ylabel: str = "Mean incident rate (incidents / tasks)",
+) -> plt.Axes:
+    """Two-line comparison of untrimmed vs 5%-trimmed monthly means.
+
+    Designed to accompany the tail sensitivity check: shows visually that
+    March's apparent elevation in the untrimmed series collapses to the same
+    level as other months once the top 5 % of rates are removed from each
+    month. The gap between the two lines at March is the visual punchline.
+
+    Parameters
+    ----------
+    untrimmed : pd.DataFrame
+        Must have columns 'month', 'untrimmed_mean', and optionally 'ci_low' /
+        'ci_high' for the shaded CI band.
+    trimmed_5pct : pd.DataFrame
+        Must have columns 'month' and 'trimmed_mean_p95'.
+    ax : plt.Axes, optional
+        Target axes. A new figure is created if not supplied.
+    title, ylabel : str
+        Plot labels.
+
+    Returns
+    -------
+    plt.Axes
+    """
+    if ax is None:
+        _, ax = plt.subplots()
+
+    months = untrimmed["month"].tolist()
+    means_u = untrimmed["untrimmed_mean"].values
+    means_t = trimmed_5pct["trimmed_mean_p95"].values
+
+    # Untrimmed — solid line with CI band if available.
+    ax.plot(months, means_u, color=_PALETTE["primary"], linewidth=2,
+            marker="o", markersize=7, label="Including all observations", zorder=3)
+    if "ci_low" in untrimmed.columns and "ci_high" in untrimmed.columns:
+        ax.fill_between(months,
+                        untrimmed["ci_low"].values,
+                        untrimmed["ci_high"].values,
+                        color=_PALETTE["light"], alpha=0.6, zorder=2)
+
+    # Trimmed — dashed grey line, no CI band.
+    ax.plot(months, means_t, color=_PALETTE["secondary"], linewidth=1.8,
+            linestyle="--", marker="o", markersize=6,
+            label="After 5% trim from each month", zorder=3)
+
+    ax.set_title(title, fontsize=12, fontweight="bold")
+    ax.set_xlabel("Month")
+    ax.set_ylabel(ylabel)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper right", frameon=False)
+    return ax
+
+
 def plot_correlation_heatmap(
     df: pd.DataFrame,
     ax: Optional[plt.Axes] = None,
