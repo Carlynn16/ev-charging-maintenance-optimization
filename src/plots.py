@@ -421,22 +421,26 @@ def plot_forest_comparison(
     ax: Optional[plt.Axes] = None,
     title: str = "Rate ratios: missing_is_zero vs missing_is_unknown",
     xlabel: str = "Rate ratio (95 % CI)",
+    labels: tuple[str, str] = ("missing_is_zero", "missing_is_unknown"),
 ) -> plt.Axes:
-    """Side-by-side forest plot comparing two GEE fits (sensitivity check).
+    """Side-by-side forest plot comparing two sets of rate ratios.
 
     Plots both sets of rate ratios on the same axes, with the two series
-    slightly offset vertically so CIs do not overlap. Primary blue for
-    missing_is_zero; warm orange for missing_is_unknown.
+    slightly offset vertically so CIs do not overlap. Primary blue for the
+    first series; warm orange for the second.
 
     Parameters
     ----------
     rr_zero, rr_unknown : pd.DataFrame
-        As returned by extract_rate_ratios() for each assumption. Both must
-        have the same terms in the same order.
+        As returned by extract_rate_ratios() for each model. Both must have
+        the same terms in the same order.
     ax : plt.Axes, optional
         Target axes. A new figure is created if not supplied.
     title, xlabel : str
         Plot labels.
+    labels : tuple of two str
+        Legend labels for the first (blue) and second (orange) series.
+        Default: ('missing_is_zero', 'missing_is_unknown').
 
     Returns
     -------
@@ -452,8 +456,8 @@ def plot_forest_comparison(
     ax.axvline(1.0, color="#CCCCCC", linewidth=1.2, zorder=1)
 
     for df, y_off, color, label in [
-        (rr_zero.iloc[::-1].reset_index(drop=True),    +offset, _PALETTE["primary"], "missing_is_zero"),
-        (rr_unknown.iloc[::-1].reset_index(drop=True), -offset, _PALETTE["accent"],  "missing_is_unknown"),
+        (rr_zero.iloc[::-1].reset_index(drop=True),    +offset, _PALETTE["primary"], labels[0]),
+        (rr_unknown.iloc[::-1].reset_index(drop=True), -offset, _PALETTE["accent"],  labels[1]),
     ]:
         for i, row in df.iterrows():
             err_low  = row["rate_ratio"] - row["ci_low"]
